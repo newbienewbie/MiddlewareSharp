@@ -3,27 +3,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-// a dummy interface 
-public interface IContext { }
+public delegate Task WorkDelegate<TContext>(TContext context);
 
-public delegate Task WorkDelegate(IContext context);
-
-public class Container
+public class Container<TContext>
 {
-    private List<Func<WorkDelegate, WorkDelegate>> _middlewares = new List<Func<WorkDelegate, WorkDelegate>>();
+    private List<Func<WorkDelegate<TContext>, WorkDelegate<TContext>>> _middlewares = new List<Func<WorkDelegate<TContext>, WorkDelegate<TContext>>>();
 
-    public Container Use(Func<WorkDelegate, WorkDelegate> mw)
+    public Container<TContext> Use(Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
     {
         this._middlewares.Add(mw);
         return this;
     }
 
-    public WorkDelegate Build()
+    public WorkDelegate<TContext> Build()
     {
         // add a WorkDelegate that do nothing to prevent null object error happens 
-        WorkDelegate last = context => Task.CompletedTask;
+        WorkDelegate<TContext> last = context => Task.CompletedTask;
         // the combined WorkDelegate
-        WorkDelegate work = last;
+        WorkDelegate<TContext> work = last;
 
         this._middlewares.Reverse();
         foreach(var mw in this._middlewares)

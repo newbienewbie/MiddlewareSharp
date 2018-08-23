@@ -6,7 +6,7 @@ namespace MiddwarePrototype
     {
         static void Main(string[] args)
         {
-            var container = new Container();
+            var container = new Container<Object>();
             container.Use(next =>
             {
                 return async context =>
@@ -27,7 +27,7 @@ namespace MiddwarePrototype
             });
 
             var d = container.Build();
-            d(new object() as IContext);
+            d(new object());
         }
     }
 }
