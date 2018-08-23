@@ -1,12 +1,29 @@
 ﻿using System;
+using Itminus.Middleware;
 
 namespace MiddwarePrototype
 {
+
+    public interface IContext{
+        bool Dummy {get;set;}
+        void Hello();
+    }
+
+    public class XContext : IContext
+    {
+        public bool Dummy { get;set; }
+
+        public void Hello()
+        {
+            System.Console.WriteLine("world");
+        }
+    }
+
     class Program
     {
         static void Main(string[] args)
         {
-            var container = new Container<Object>();
+            var container = new WorkContainer<IContext>();
             container.Use(next =>
             {
                 return async context =>
@@ -27,7 +44,7 @@ namespace MiddwarePrototype
             });
 
             var d = container.Build();
-            d(new object());
+            d(new XContext());
         }
     }
 }
