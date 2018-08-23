@@ -48,6 +48,11 @@ namespace MiddwarePrototype
                 await next();
                 Console.WriteLine("It works - mw3");
             })
+            .Run((context) =>{
+                Console.WriteLine("It works - innermost");
+                Console.WriteLine("It works - innermost");
+                return Task.CompletedTask;
+            })
             ;
 
             var d = container.Build();

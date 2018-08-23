@@ -26,6 +26,15 @@ namespace Itminus.Middleware{
             });
         }
 
+        public WorkContainer<TContext> Run(Func<TContext,Task> mw)
+        {
+            return this.Use(next=>{
+                return async context =>{
+                    await mw(context);
+                };
+            });
+        }
+
         public WorkDelegate<TContext> Build()
         {
             // add a WorkDelegate that do nothing to prevent null object error happens 
