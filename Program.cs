@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Itminus.Middleware;
 
 namespace MiddwarePrototype
@@ -37,11 +38,17 @@ namespace MiddwarePrototype
             {
                 return async context =>
                 {
-                    Console.WriteLine("It works - innermost");
+                    Console.WriteLine("It works - mw2");
                     await next(context);
-                    Console.WriteLine("It works - innermost");
+                    Console.WriteLine("It works - mw2");
                 };
-            });
+            })
+            .Use(async (context,next) =>{
+                Console.WriteLine("It works - mw3");
+                await next();
+                Console.WriteLine("It works - mw3");
+            })
+            ;
 
             var d = container.Build();
             d(new XContext());
