@@ -61,6 +61,72 @@ namespace Itminus.Middleware{
         }
 
         /// <summary>
+        /// register a branch middleware
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="mw"></param>
+        /// <returns></returns>
+        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<TContext, Func<Task>, Task> mw)
+        {
+            return this.Use(next => {
+                return async context => {
+                    var flag = await predicate(context);
+                    if (flag) {
+                        Func<Task> _next = () => next(context);
+                        await mw(context, _next);
+                    }
+                    else {
+                        await next(context);
+                    }
+                };
+            });
+        }
+
+        /// <summary>
+        /// register a branch middleware
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="mw"></param>
+        /// <returns></returns>
+        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
+        {
+            return this.Use(next => {
+                return async context => {
+                    var flag = await predicate(context);
+                    if (flag) {
+                        var x=mw(next);
+                        await x(context);
+                    }
+                    else {
+                        await next(context);
+                    }
+                };
+            });
+        }
+
+        /// <summary>
+        /// register a branch middleware , Note it will terminate the pipeline if matched!
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="mw"></param>
+        /// <returns></returns>
+        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<TContext,Task> mw)
+        {
+
+            return this.Use(next=> {
+                return async context => {
+                    var flag = await predicate(context);
+                    if(flag) {
+                        await mw(context);
+                    }
+                    else {
+                        return;
+                    }
+                };
+            });
+        }
+
+        /// <summary>
         /// Build a final work delegate
         /// </summary>
         /// <returns></returns>

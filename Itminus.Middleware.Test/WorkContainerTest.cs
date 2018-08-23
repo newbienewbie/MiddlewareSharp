@@ -21,6 +21,62 @@ namespace Itminus.Middleware.Test
         }
 
         [Fact]
+        public void TestMapWhen()
+        {
+            var container = new WorkContainer<List<string>>();
+            Func<List<string>, Task<bool>> predicateTrue = async context => await Task.FromResult<bool>(true);
+            Func<List<string>, Task<bool>> predicateFalse = async context => await Task.FromResult<bool>(false);
+
+            container.MapWhen( predicateTrue, next => {
+                return async context => {
+                    context.Add(MessageCall(1, true));
+                    await next(context);
+                    context.Add(MessageCall(1, false));
+                };
+            })
+            .MapWhen( predicateFalse, next => {
+                return async context => {
+                    context.Add(MessageCall(2, true));
+                    await next(context);
+                    context.Add(MessageCall(2, false));
+                };
+            })
+            .MapWhen( predicateTrue, async (context,next) => {
+                context.Add(MessageCall(3, true));
+                await next();
+                context.Add(MessageCall(3, false));
+            })
+            .MapWhen( predicateFalse, async (context, next) => {
+                context.Add(MessageCall(4, true));
+                await next();
+                context.Add(MessageCall(4, false));
+            })
+            .MapWhen( predicateTrue, (context) => {
+                context.Add(MessageCall(5, false));
+                return Task.CompletedTask;
+            })
+            .MapWhen( predicateFalse, (context) => {
+                context.Add(MessageCall(6, false));
+                return Task.CompletedTask;
+            })
+            .MapWhen( predicateTrue, (context) => {
+                context.Add(MessageCall(7, false));
+                return Task.CompletedTask;
+            })
+            ;
+            
+            var d = container.Build();
+            var _context = new List<string>();
+            d(_context);
+            Assert.Equal(5, _context.Count);
+            Assert.Equal(MessageCall(1, true), _context[0]);
+            Assert.Equal(MessageCall(3, true), _context[1]);
+            Assert.Equal(MessageCall(5, false), _context[2]);
+            Assert.Equal(MessageCall(3, false), _context[3]);
+            Assert.Equal(MessageCall(1, false), _context[4]);
+        }
+
+        [Fact]
         public void TestUseAndRun()
         {
             var container = new WorkContainer<List<string>>();
