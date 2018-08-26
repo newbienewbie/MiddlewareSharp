@@ -51,15 +51,15 @@ namespace Itminus.Middleware.Test
                 await next();
                 context.Add(MessageCall(4, false));
             })
-            .MapWhen( predicateTrue, (context) => {
+            .RunWhen( predicateTrue, (context) => {
                 context.Add(MessageCall(5, false));
                 return Task.CompletedTask;
             })
-            .MapWhen( predicateFalse, (context) => {
+            .RunWhen( predicateFalse, (context) => {
                 context.Add(MessageCall(6, false));
                 return Task.CompletedTask;
             })
-            .MapWhen( predicateTrue, (context) => {
+            .RunWhen( predicateTrue, (context) => {
                 context.Add(MessageCall(7, false));
                 return Task.CompletedTask;
             })

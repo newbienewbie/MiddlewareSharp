@@ -110,7 +110,7 @@ namespace Itminus.Middleware{
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<TContext,Task> mw)
+        public WorkContainer<TContext> RunWhen(Func<TContext, Task<bool>> predicate, Func<TContext,Task> mw)
         {
 
             return this.Use(next=> {
