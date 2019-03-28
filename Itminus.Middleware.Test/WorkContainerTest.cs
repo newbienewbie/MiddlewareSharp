@@ -3,7 +3,6 @@ using Xunit;
 using Itminus.Middleware;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Itminus.Middleware.Test
 {
