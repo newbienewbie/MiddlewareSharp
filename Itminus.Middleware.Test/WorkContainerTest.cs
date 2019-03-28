@@ -3,6 +3,7 @@ using Xunit;
 using Itminus.Middleware;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Itminus.Middleware.Test
 {
@@ -20,46 +21,47 @@ namespace Itminus.Middleware.Test
             return $"mw{i}-{call}";
         }
 
+
         [Fact]
-        public void TestMapWhen()
+        public void TestUseWhenAndMapWhen()
         {
             var container = new WorkContainer<List<string>>();
             Func<List<string>, Task<bool>> predicateTrue = async context => await Task.FromResult<bool>(true);
             Func<List<string>, Task<bool>> predicateFalse = async context => await Task.FromResult<bool>(false);
 
-            container.MapWhen( predicateTrue, next => {
+            container.UseWhen( predicateTrue, next => {
                 return async context => {
                     context.Add(MessageCall(1, true));
                     await next(context);
                     context.Add(MessageCall(1, false));
                 };
             })
-            .MapWhen( predicateFalse, next => {
+            .UseWhen( predicateFalse, next => {
                 return async context => {
                     context.Add(MessageCall(2, true));
                     await next(context);
                     context.Add(MessageCall(2, false));
                 };
             })
-            .MapWhen( predicateTrue, async (context,next) => {
+            .UseWhen( predicateTrue, async (context,next) => {
                 context.Add(MessageCall(3, true));
                 await next();
                 context.Add(MessageCall(3, false));
             })
-            .MapWhen( predicateFalse, async (context, next) => {
+            .UseWhen( predicateFalse, async (context, next) => {
                 context.Add(MessageCall(4, true));
                 await next();
                 context.Add(MessageCall(4, false));
             })
-            .RunWhen( predicateTrue, (context) => {
+            .MapWhen( predicateTrue, (context) => {
                 context.Add(MessageCall(5, false));
                 return Task.CompletedTask;
             })
-            .RunWhen( predicateFalse, (context) => {
+            .MapWhen( predicateFalse, (context) => {
                 context.Add(MessageCall(6, false));
                 return Task.CompletedTask;
             })
-            .RunWhen( predicateTrue, (context) => {
+            .MapWhen( predicateTrue, (context) => {
                 context.Add(MessageCall(7, false));
                 return Task.CompletedTask;
             })

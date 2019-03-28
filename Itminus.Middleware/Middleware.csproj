@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <PackageId>Itminus.Middleware</PackageId>
-    <Version>0.2.1</Version>
+    <Version>0.3.0</Version>
     <Authors>itminus</Authors>
   </PropertyGroup>
 
   <PropertyGroup>
-    <TargetFramework>netstandard1.3</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+  </ItemGroup>
 
 </Project>

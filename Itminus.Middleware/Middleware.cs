@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Itminus.Middleware{
 
@@ -21,8 +22,16 @@ namespace Itminus.Middleware{
     {
         private List<Func<WorkDelegate<TContext>, WorkDelegate<TContext>>> _middlewares = new List<Func<WorkDelegate<TContext>, WorkDelegate<TContext>>>();
 
+        public WorkContainer()
+        {
+        }
+
+
         /// <summary>
-        /// register a basic middleware
+        /// register a basic middleware 
+        ///    In a nutshell, a middleware , as the `_middlewares` indicates, is a `Func<WorkDelegate<TContext>,WorkDelegate<TContext>>`
+        ///        which represents a high-order function that accepts a WorkDelegate and return a new WorkDelegate.
+        ///    A middleware is used to transform the WorkDelegate.
         /// </summary>
         /// <param name="mw"></param>
         /// <returns></returns>
@@ -40,11 +49,14 @@ namespace Itminus.Middleware{
         public WorkContainer<TContext> Use(Func<TContext,Func<Task>,Task> mw){
             return this.Use(next => {
                 return async context =>{
+                    // a handy wrapper around the `next` WorkDelegate that captures the context by a clousure.
                     Func<Task> _next = ()=> next(context); 
                     await mw(context, _next);
                 };
             });
         }
+
+
 
         /// <summary>
         /// register a middleware that runs at the end .
@@ -61,12 +73,53 @@ namespace Itminus.Middleware{
         }
 
         /// <summary>
-        /// register a branch middleware
+        /// register a branch middleware , Note it will terminate the pipeline if not matched!
         /// </summary>
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<TContext, Func<Task>, Task> mw)
+        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<TContext,Task> mw)
+        {
+
+            return this.Use(next=> {
+                return async context => {
+                    var flag = await predicate(context);
+                    if(flag) {
+                        await mw(context);
+                    }
+                };
+            });
+        }
+
+        /// <summary>
+        /// register a branch middleware , Note it will terminate the pipeline if not matched!
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="mw"></param>
+        /// <returns></returns>
+        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
+        {
+
+            return this.Use(next=> {
+                return async context => {
+                    var flag = await predicate(context);
+                    if(flag) {
+                        // transform the next WorkDelegate and get a new WorkDelegate
+                        var x = mw(next);  
+                        await x(context);
+                    }
+                };
+            });
+        }
+
+
+        /// <summary>
+        /// register a branch middleware , Note it won't terminate the pipeline if not matched!
+        /// </summary>
+        /// <param name="predicate"></param>
+        /// <param name="mw"></param>
+        /// <returns></returns>
+        public WorkContainer<TContext> UseWhen(Func<TContext, Task<bool>> predicate, Func<TContext, Func<Task>, Task> mw)
         {
             return this.Use(next => {
                 return async context => {
@@ -83,12 +136,12 @@ namespace Itminus.Middleware{
         }
 
         /// <summary>
-        /// register a branch middleware
+        /// register a branch middleware, won't terminate the pipepline if not matched
         /// </summary>
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
+        public WorkContainer<TContext> UseWhen(Func<TContext, Task<bool>> predicate, Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
         {
             return this.Use(next => {
                 return async context => {
@@ -104,27 +157,6 @@ namespace Itminus.Middleware{
             });
         }
 
-        /// <summary>
-        /// register a branch middleware , Note it will terminate the pipeline if matched!
-        /// </summary>
-        /// <param name="predicate"></param>
-        /// <param name="mw"></param>
-        /// <returns></returns>
-        public WorkContainer<TContext> RunWhen(Func<TContext, Task<bool>> predicate, Func<TContext,Task> mw)
-        {
-
-            return this.Use(next=> {
-                return async context => {
-                    var flag = await predicate(context);
-                    if(flag) {
-                        await mw(context);
-                    }
-                    else {
-                        return;
-                    }
-                };
-            });
-        }
 
         /// <summary>
         /// Build a final work delegate
