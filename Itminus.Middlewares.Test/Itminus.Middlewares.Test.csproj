@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Itminus.Middleware\Middleware.csproj" />
+    <ProjectReference Include="..\Itminus.Middlewares\Itminus.Middlewares.csproj" />
   </ItemGroup>
 
 </Project>

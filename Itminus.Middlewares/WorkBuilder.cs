@@ -2,26 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Itminus.Middleware{
-
-    /// <summary>
-    /// a delegate that deal with context
-    /// </summary>
-    /// <typeparam name="TContext"></typeparam>
-    /// <param name="context"></param>
-    /// <returns></returns>
-    public delegate Task WorkDelegate<TContext>(TContext context);
+namespace Itminus.Middlewares
+{
 
     /// <summary>
     /// a Container that can register a sequence of work and build a WorkDelegate
     /// </summary>
-    /// <typeparam name="TContext"></typeparam>
-    public class WorkContainer<TContext>
+    /// <typeparam name="TWorkContext"></typeparam>
+    public class WorkBuilder<TWorkContext>
+        where TWorkContext : IWorkContext
     {
-        private List<Func<WorkDelegate<TContext>, WorkDelegate<TContext>>> _middlewares = new List<Func<WorkDelegate<TContext>, WorkDelegate<TContext>>>();
+        private List<Func<WorkDelegate<TWorkContext>, WorkDelegate<TWorkContext>>> _middlewares = new List<Func<WorkDelegate<TWorkContext>, WorkDelegate<TWorkContext>>>();
 
-        public WorkContainer()
+        public WorkBuilder()
         {
         }
 
@@ -34,7 +29,7 @@ namespace Itminus.Middleware{
         /// </summary>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> Use(Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
+        public WorkBuilder<TWorkContext> Use(Func<WorkDelegate<TWorkContext>, WorkDelegate<TWorkContext>> mw)
         {
             this._middlewares.Add(mw);
             return this;
@@ -45,12 +40,28 @@ namespace Itminus.Middleware{
         /// </summary>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> Use(Func<TContext,Func<Task>,Task> mw){
+        public WorkBuilder<TWorkContext> Use(Func<TWorkContext,Func<Task>,Task> mw){
             return this.Use(next => {
                 return async context =>{
                     // a handy wrapper around the `next` WorkDelegate that captures the context by a clousure.
                     Func<Task> _next = ()=> next(context); 
                     await mw(context, _next);
+                };
+            });
+        }
+
+        public WorkBuilder<TWorkContext> Use<TMiddleware>()
+            where TMiddleware : IWorkMiddleware<TWorkContext>
+        {
+            return this.Use(next =>{
+                return async context =>{
+                    var sp = context.ServiceProvider;
+                    var middlewareInstance = sp.GetRequiredService<TMiddleware>();
+                    if(middlewareInstance == null)
+                    {
+                        throw new NullReferenceException($"无法获取{typeof(TMiddleware).FullName}实例!");
+                    }
+                    await middlewareInstance.InvokeAsync(context, next);
                 };
             });
         }
@@ -62,7 +73,7 @@ namespace Itminus.Middleware{
         /// </summary>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> Run(Func<TContext,Task> mw)
+        public WorkBuilder<TWorkContext> Run(Func<TWorkContext,Task> mw)
         {
             return this.Use(next=>{
                 return async context =>{
@@ -77,7 +88,7 @@ namespace Itminus.Middleware{
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<TContext,Task> mw)
+        public WorkBuilder<TWorkContext> MapWhen(Func<TWorkContext, Task<bool>> predicate, Func<TWorkContext,Task> mw)
         {
 
             return this.Use(next=> {
@@ -96,7 +107,7 @@ namespace Itminus.Middleware{
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> MapWhen(Func<TContext, Task<bool>> predicate, Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
+        public WorkBuilder<TWorkContext> MapWhen(Func<TWorkContext, Task<bool>> predicate, Func<WorkDelegate<TWorkContext>, WorkDelegate<TWorkContext>> mw)
         {
 
             return this.Use(next=> {
@@ -118,7 +129,7 @@ namespace Itminus.Middleware{
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> UseWhen(Func<TContext, Task<bool>> predicate, Func<TContext, Func<Task>, Task> mw)
+        public WorkBuilder<TWorkContext> UseWhen(Func<TWorkContext, Task<bool>> predicate, Func<TWorkContext, Func<Task>, Task> mw)
         {
             return this.Use(next => {
                 return async context => {
@@ -140,7 +151,7 @@ namespace Itminus.Middleware{
         /// <param name="predicate"></param>
         /// <param name="mw"></param>
         /// <returns></returns>
-        public WorkContainer<TContext> UseWhen(Func<TContext, Task<bool>> predicate, Func<WorkDelegate<TContext>, WorkDelegate<TContext>> mw)
+        public WorkBuilder<TWorkContext> UseWhen(Func<TWorkContext, Task<bool>> predicate, Func<WorkDelegate<TWorkContext>, WorkDelegate<TWorkContext>> mw)
         {
             return this.Use(next => {
                 return async context => {
@@ -161,12 +172,12 @@ namespace Itminus.Middleware{
         /// Build a final work delegate
         /// </summary>
         /// <returns></returns>
-        public WorkDelegate<TContext> Build()
+        public WorkDelegate<TWorkContext> Build()
         {
             // add a WorkDelegate that do nothing to prevent null object error happens 
-            WorkDelegate<TContext> last = context => Task.CompletedTask;
+            WorkDelegate<TWorkContext> last = context => Task.CompletedTask;
             // the combined WorkDelegate
-            WorkDelegate<TContext> work = last;
+            WorkDelegate<TWorkContext> work = last;
 
             this._middlewares.Reverse();
             foreach(var mw in this._middlewares)
